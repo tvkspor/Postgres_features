@@ -1,0 +1,44 @@
+services:
+  pg:
+    image: postgres:18
+    container_name: pg-lab
+    environment:
+      POSTGRES_PASSWORD: lab
+      POSTGRES_DB: lab
+    ports: ["5433:5432"]          # 5433 để không đụng Postgres local nếu có
+    shm_size: 512mb               # đủ cho parallel query ở scale lab này
+    mem_limit: 2g                 # chặn tràn RAM host (12GB máy bạn)
+    volumes:
+      - pgdata:/var/lib/postgresql
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements,auto_explain
+      -c shared_buffers=512MB
+      -c effective_cache_size=1536MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=256MB
+      -c random_page_cost=1.1
+      -c track_io_timing=on
+      -c wal_level=logical
+      -c max_wal_size=2GB
+      -c log_checkpoints=on
+      -c log_lock_waits=on
+      -c log_autovacuum_min_duration=0
+      -c log_min_duration_statement=500
+      -c auto_explain.log_min_duration=1000
+      -c auto_explain.log_analyze=on
+      -c auto_explain.log_buffers=on
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles: ["tools"]           # không tự chạy — chỉ khi cần: docker compose --profile tools up -d
+    environment:
+      PGADMIN_DEFAULT_EMAIL: a@b.c
+      PGADMIN_DEFAULT_PASSWORD: lab
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports: ["5050:80"]
+    mem_limit: 512m
+    depends_on: [pg]
+
+volumes:
+  pgdata:
